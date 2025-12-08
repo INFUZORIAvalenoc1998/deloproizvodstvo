@@ -1,28 +1,29 @@
 <?php
+// Убираем session_start() здесь, так как он уже вызывается в db_connect.php или на верхнем уровне
+// include уже включает файл с сессией
+
 include '../../db_connect.php';
 
-session_start();
+// Проверяем, активна ли сессия
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
 if (!isset($_SESSION['login'])) {
     die('Вы должны войти в систему, чтобы просмотреть дела.');
 }
-
-//ini_set('xdebug.profiler_enable', 1);
-//ini_set('xdebug.profiler_output_dir', '/Users/wishes/Прога/prof');
-//xdebug_break();
 
 $client_id = $_SESSION['client_id'] ?? null;
 if ($client_id === null) {
     die('ID клиента не найден.');
 }
 
-$sql = "
-    SELECT 
+$sql = "SELECT 
         t.id AS task_id,
         t.name AS task_name,
         t.status AS task_status,
         t.description AS task_description,
         t.date AS task_date,
-        t.photoURL,
         a.name AS area_name,
         u.login AS employee_login
     FROM task t
@@ -32,6 +33,10 @@ $sql = "
     ORDER BY t.id DESC";
 
 $stmt = $conn->prepare($sql);
+if (!$stmt) {
+    die("Ошибка подготовки запроса: " . $conn->error);
+}
+
 $stmt->bind_param("i", $client_id);
 $stmt->execute();
 $result = $stmt->get_result();
@@ -48,11 +53,9 @@ if ($result->num_rows > 0) {
         $TaskStatus = $row['task_status'];
         $TaskEmployee = $row['employee_login'] ?? '-';
         $TaskDate = $row['task_date'];
-        $photoURL = $row['photoURL'] ?? '';
-
-        $photoHTML = empty($photoURL)
-            ? "<p class='task-photo'>Фото дела не загружено</p>"
-            : "<img src='$photoURL' alt='Фото дела не найдено' class='task-photo' onerror=\"this.alt='Фото дела не найдено либо файл поврежден';\">";
+        
+        // Фото дела всегда не загружено, так как столбец photoURL убран
+        $photoHTML = "<p class='task-photo'>Фото дела не загружено</p>";
 
         ?>
         <div class="task">
@@ -180,4 +183,3 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 </script>
-
